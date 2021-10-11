@@ -1,10 +1,13 @@
 #!/usr/bin/env python
-from typing import List
-import click
+import sys
 from logging import getLogger
 from pathlib import Path
-from .merger import get_strategic_merger
+from typing import List
+
+import click
 import yaml
+
+from .merger import get_strategic_merger
 
 log = getLogger(__name__)
 
@@ -14,6 +17,13 @@ log = getLogger(__name__)
     "files",
     nargs=-1,
     type=click.Path(),
+)
+@click.option(
+    "-r",
+    "--recursive",
+    is_flag=True,
+    type=bool,
+    help="Traverse given directory",
 )
 @click.option(
     "-o",
@@ -31,9 +41,22 @@ log = getLogger(__name__)
     show_default=True,
 )
 @click.help_option("-h", "--help")
-def cli(files: List[click.Path], output: click.Path, key: str):
+def cli(files: List[click.Path], recursive: bool, output: click.Path, key: str):
     merger = get_strategic_merger(keyname=key)
     result = {}
+    if not files:
+        log.error("No files given.")
+        sys.exit(1)
+
+    # if recursive, then files must be a directory
+    if recursive:
+        paths = [Path(f) for f in files]
+        files = []
+        for path in paths:
+            if not path.is_dir():
+                continue
+            files += list(path.glob("**/*.yaml"))
+
     for file in files:
         file = Path(file)
         if not file.exists():
